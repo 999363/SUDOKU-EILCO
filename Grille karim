@@ -1,0 +1,77 @@
+
+#include <stdio.h>
+
+// 1. Initialiser la grille de depart
+void initialiserGrille(int grille[9][9])
+{
+    int sudoku[9][9] = {
+        {5, 3, 0, 0, 7, 0, 0, 0, 0},
+        {6, 0, 0, 1, 9, 5, 0, 0, 0},
+        {0, 9, 8, 0, 0, 0, 0, 6, 0},
+        {8, 0, 0, 0, 6, 0, 0, 0, 3},
+        {4, 0, 0, 8, 0, 3, 0, 0, 1},
+        {7, 0, 0, 0, 2, 0, 0, 0, 6},
+        {0, 6, 0, 0, 0, 0, 2, 8, 0},
+        {0, 0, 0, 4, 1, 9, 0, 0, 5},
+        {0, 0, 0, 0, 8, 0, 0, 7, 9}
+    };
+
+    int i, j;
+
+    for (i = 0; i < 9; i++)
+    {
+        for (j = 0; j < 9; j++)
+        {
+            grille[i][j] = sudoku[i][j];
+        }
+    }
+}
+
+// 2. Copier une grille dans une autre
+void copierGrille(int source[9][9], int destination[9][9])
+{
+    int i, j;
+
+    for (i = 0; i < 9; i++)
+    {
+        for (j = 0; j < 9; j++)
+        {
+            destination[i][j] = source[i][j];
+        }
+    }
+}
+
+// 3. Initialiser la grille du joueur
+void initialiserGrilleJoueur(int grille[9][9], int joueur[9][9])
+{
+    copierGrille(grille, joueur);
+}
+
+// 4. Afficher une grille
+void afficherGrille(int grille[9][9])
+{
+    int i, j;
+
+    for (i = 0; i < 9; i++)
+    {
+        for (j = 0; j < 9; j++)
+        {
+            printf("%d ", grille[i][j]);
+        }
+
+        printf("\n");
+    }
+}
+
+// Programme principal pour tester les fonctions
+int main(void)
+{
+    int grille[9][9];
+    int joueur[9][9];
+
+    initialiserGrille(grille);
+    initialiserGrilleJoueur(grille, joueur);
+    afficherGrille(joueur);
+
+    return 0;
+}
