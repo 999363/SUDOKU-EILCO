@@ -1,170 +1,323 @@
+/*
+ * ============================================================================
+ *  SUDOKU-EILCO - Projet sudoku en langage C
+ *  Version complete : menus, controle de saisie, grille, controle des regles
+ *  du Sudoku et navigation par pages.
+ *
+ *  Compilation :  gcc -Wall -Wextra -o sudoku sudoku.c
+ * ============================================================================
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
 
-/* =====================================================
-   1. CONTROLE DE SAISIE
-   ===================================================== */
+#define TAILLE 9
+
+/* Codes renvoyes par verifierPlacement */
+#define PLACEMENT_OK      0
+#define CONFLIT_LIGNE     1
+#define CONFLIT_COLONNE   2
+#define CONFLIT_BLOC      3
+
+/* ========================================================================== */
+/*  1. PAGES : effacer l'ecran et attendre (PARTIE 2)                          */
+/* ========================================================================== */
+
+void effacerEcran(void)
+{
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
+void attendreEntree(void)
+{
+    printf("\nAppuyez sur Entree pour continuer...");
+    getchar();
+}
+
+/* ========================================================================== */
+/*  2. CONTROLE DE SAISIE (controle_saisie.c)                                  */
+/* ========================================================================== */
 
 void vider_buffer(void)
 {
     int c;
+
     do {
         c = getchar();
     } while (c != '\n' && c != EOF);
 }
 
-int saisirEntier(char message[])
+/* saisir_entier : demande un entier entre min et max, jusqu'a saisie correcte */
+int saisir_entier(const char *message, int min, int max)
 {
-    int valeur;
+    int valeur = 0;
     int retour;
+    int correct;
 
     do {
         printf("%s", message);
         retour = scanf("%d", &valeur);
+
+        if (retour == EOF) {
+            printf("\nEntree fermee, arret du programme.\n");
+            exit(0);
+        }
         vider_buffer();
 
-        if (retour != 1) {
-            printf("Erreur : veuillez entrer un nombre.\n");
+        if (retour != 1 || valeur < min || valeur > max) {
+            printf("Erreur : vous devez entrer un nombre entre %d et %d.\n",
+                   min, max);
+            correct = 0;
+        } else {
+            correct = 1;
         }
-
-    } while (retour != 1);
+    } while (correct == 0);
 
     return valeur;
 }
 
-int verifierchoix(int choix, int max, int min)
-{
-    while (choix < min || choix > max) {
-        printf("Oups, choix non disponible !\n");
-        choix = saisirEntier("Recommencez : ");
-    }
+/* ========================================================================== */
+/*  3. CONTROLE DES REGLES DU SUDOKU (PARTIE 1)                                */
+/* ========================================================================== */
 
-    return choix;
+int verifierPlacement(int grille[TAILLE][TAILLE], int ligne, int colonne, int valeur)
+{
+    for (int j = 0; j < TAILLE; j++)
+        if (j != colonne && grille[ligne][j] == valeur)
+            return CONFLIT_LIGNE;
+
+    for (int i = 0; i < TAILLE; i++)
+        if (i != ligne && grille[i][colonne] == valeur)
+            return CONFLIT_COLONNE;
+
+    int debutLigne   = (ligne / 3) * 3;
+    int debutColonne = (colonne / 3) * 3;
+    for (int i = debutLigne; i < debutLigne + 3; i++)
+        for (int j = debutColonne; j < debutColonne + 3; j++)
+            if ((i != ligne || j != colonne) && grille[i][j] == valeur)
+                return CONFLIT_BLOC;
+
+    return PLACEMENT_OK;
 }
 
+/* ========================================================================== */
+/*  4. GRILLE : affichage et remplissage (Grille2.0)                           */
+/* ========================================================================== */
 
-/* =====================================================
-   2. MENU ET NAVIGATION
-   ===================================================== */
-
-int afficherMenu(void)
+void copierGrille(int source[TAILLE][TAILLE], int destination[TAILLE][TAILLE])
 {
-    int choix;
-
-    printf("\n");
-    printf("+==============================================================+\n");
-    printf("|                                                              |\n");
-    printf("|     #####   ##   ##  ######   ######  ##   ##  ##   ##       |\n");
-    printf("|   ##       ##   ##  ##   ## ##    ## ##  ##   ##   ##       |\n");
-    printf("|     #####  ##   ##  ##   ## ##    ## #####    ##   ##       |\n");
-    printf("|         ## ##   ##  ##   ## ##    ## ##  ##   ##   ##       |\n");
-    printf("|     #####   #####   ######   ######  ##   ##   #####         |\n");
-    printf("|                                                              |\n");
-    printf("|                 T H E   M I N D   G A M E                    |\n");
-    printf("|                                                              |\n");
-    printf("+==============================================================+\n");
-    printf("|                                                              |\n");
-    printf("|                    BIENVENUE, PLAYER                         |\n");
-    printf("|                                                              |\n");
-    printf("|               +--------------------------------+             |\n");
-    printf("|               |         MENU PRINCIPAL        |             |\n");
-    printf("|               +--------------------------------+             |\n");
-    printf("|               |                                |             |\n");
-    printf("|               |    [ 01 ] NOUVELLE PARTIE      |             |\n");
-    printf("|               |    [ 02 ] CHARGER LE JEU      |             |\n");
-    printf("|               |    [ 03 ] COMMENT JOUER       |             |\n");
-    printf("|               |    [ 04 ] SORTIE              |             |\n");
-    printf("|               |                                |             |\n");
-    printf("|               +--------------------------------+             |\n");
-    printf("|                                                              |\n");
-    printf("|          LOGIQUE - STRATEGIE - CONCENTRATION                 |\n");
-    printf("|                    EILCO | 2026-2027                         |\n");
-    printf("+==============================================================+\n");
-
-    choix = saisirEntier("Entrez votre choix : ");
-
-    return verifierchoix(choix, 4, 1);
+    for (int i = 0; i < TAILLE; i++)
+        for (int j = 0; j < TAILLE; j++)
+            destination[i][j] = source[i][j];
 }
 
-
-/* =====================================================
-   3. GESTION DE LA GRILLE SUDOKU
-   ===================================================== */
-
-void initialiserGrilleJoueur(int grille[9][9],
-                             int joueur[9][9])
+void afficherGrille(int grille[TAILLE][TAILLE])
 {
-    for (int i = 0; i < 9; i++) {
-        for (int j = 0; j < 9; j++) {
-            joueur[i][j] = grille[i][j];
-        }
-    }
-}
-
-
-void afficherGrille(int grille[9][9])
-{
-    for (int i = 0; i < 9; i++) {
-
+    printf("\n    1 2 3   4 5 6   7 8 9\n");
+    for (int i = 0; i < TAILLE; i++)
+    {
         if (i % 3 == 0)
-            printf("+-------+-------+-------+\n");
+            printf("  +-------+-------+-------+\n");
 
-        for (int j = 0; j < 9; j++) {
-
+        printf("%d ", i + 1);
+        for (int j = 0; j < TAILLE; j++)
+        {
             if (j % 3 == 0)
                 printf("| ");
 
             if (grille[i][j] == 0)
-                printf("  ");
+                printf(". ");
             else
                 printf("%d ", grille[i][j]);
         }
-
         printf("|\n");
     }
-
-    printf("+-------+-------+-------+\n");
+    printf("  +-------+-------+-------+\n\n");
 }
 
-
-/* =====================================================
-   4. REMPLISSAGE DE LA GRILLE
-   ===================================================== */
-
-void remplirGrilleJoueur(int joueur[9][9],
-                         int grille[9][9])
+/*
+ * remplirGrilleJoueur : saisit ligne, colonne, chiffre puis verifie :
+ *  - la case ne doit pas etre une case de depart ;
+ *  - le chiffre ne doit pas deja etre dans la ligne, la colonne ou le bloc.
+ * Entrer 0 comme chiffre efface une case remplie par le joueur.
+ * Renvoie le message a afficher apres le coup.
+ */
+const char *remplirGrilleJoueur(int joueur[TAILLE][TAILLE], int grille[TAILLE][TAILLE])
 {
-    int ligne, colonne, valeur;
+    static char message[100];
 
-    ligne = saisirEntier("Ligne (1-9) : ");
-    ligne = verifierchoix(ligne, 9, 1);
+    int ligne   = saisir_entier("Ligne (1-9) : ", 1, 9);
+    int colonne = saisir_entier("Colonne (1-9) : ", 1, 9);
+    int valeur  = saisir_entier("Chiffre (1-9, 0 pour effacer) : ", 0, 9);
 
-    colonne = saisirEntier("Colonne (1-9) : ");
-    colonne = verifierchoix(colonne, 9, 1);
+    if (grille[ligne - 1][colonne - 1] != 0)
+        return "Case deja remplie dans la grille de depart !";
 
-    valeur = saisirEntier("Chiffre (1-9) : ");
-    valeur = verifierchoix(valeur, 9, 1);
+    if (valeur == 0)
+    {
+        joueur[ligne - 1][colonne - 1] = 0;
+        return "Case effacee.";
+    }
 
-    if (grille[ligne - 1][colonne - 1] == 0) {
+    int conflit = verifierPlacement(joueur, ligne - 1, colonne - 1, valeur);
 
+    if (conflit == CONFLIT_LIGNE)
+        snprintf(message, sizeof(message),
+                 "Impossible : le %d est deja dans la ligne %d !", valeur, ligne);
+    else if (conflit == CONFLIT_COLONNE)
+        snprintf(message, sizeof(message),
+                 "Impossible : le %d est deja dans la colonne %d !", valeur, colonne);
+    else if (conflit == CONFLIT_BLOC)
+        snprintf(message, sizeof(message),
+                 "Impossible : le %d est deja dans ce bloc 3x3 !", valeur);
+    else
+    {
         joueur[ligne - 1][colonne - 1] = valeur;
+        return "Chiffre ajoute !";
+    }
 
-        printf("Chiffre ajoute !\n");
-    }
-    else {
-        printf("Case deja remplie !\n");
-    }
+    return message;
 }
 
+/* ========================================================================== */
+/*  5. VERIFICATION DE FIN DE PARTIE                                           */
+/* ========================================================================== */
 
-/* =====================================================
-   5. LANCEMENT D'UNE PARTIE
-   ===================================================== */
-
-void nouvellePartie(void)
+int grilleComplete(int joueur[TAILLE][TAILLE])
 {
-    int grille[9][9] = {
+    for (int i = 0; i < TAILLE; i++)
+        for (int j = 0; j < TAILLE; j++)
+            if (joueur[i][j] == 0)
+                return 0;
+    return 1;
+}
+
+/* ========================================================================== */
+/*  6. PARTIE                                                                  */
+/* ========================================================================== */
+
+void jouerPartie(int grille[TAILLE][TAILLE])
+{
+    int joueur[TAILLE][TAILLE];
+    int continuer = 1;
+
+    copierGrille(grille, joueur);
+
+    while (continuer == 1)
+    {
+        effacerEcran();
+        printf("================ PARTIE EN COURS ================\n");
+        afficherGrille(joueur);
+
+        const char *message = remplirGrilleJoueur(joueur, grille);
+        printf("\n%s\n", message);
+
+        /* Les saisies etant controlees, une grille pleine est forcement juste */
+        if (grilleComplete(joueur))
+        {
+            effacerEcran();
+            printf("================ PARTIE TERMINEE ================\n");
+            afficherGrille(joueur);
+            printf("BRAVO ! Vous avez resolu le Sudoku !\n");
+            attendreEntree();
+            return;
+        }
+
+        continuer = saisir_entier("\nContinuer ? (1 = oui, 0 = non) : ", 0, 1);
+    }
+
+    effacerEcran();
+    printf("Partie interrompue. Retour au menu principal.\n");
+    attendreEntree();
+}
+
+/* ========================================================================== */
+/*  7. MENUS (menu_final.txt) - chaque menu est une page                       */
+/* ========================================================================== */
+
+int afficherMenu(void)
+{
+    effacerEcran();
+    printf("+================================================================+\n");
+    printf("|                                                                |\n");
+    printf("|     #####   ##   ##  ######   ######  ##   ##  ##   ##         |\n");
+    printf("|    ##       ##   ##  ##   ## ##    ## ##  ##   ##   ##         |\n");
+    printf("|     #####   ##   ##  ##   ## ##    ## #####    ##   ##         |\n");
+    printf("|         ##  ##   ##  ##   ## ##    ## ##  ##   ##   ##         |\n");
+    printf("|     #####    #####   ######   ######  ##   ##   #####          |\n");
+    printf("|                                                                |\n");
+    printf("|                  T H E   M I N D   G A M E                     |\n");
+    printf("+================================================================+\n");
+    printf("|                                                                |\n");
+    printf("|                    BIENVENUE, PLAYER                           |\n");
+    printf("|                                                                |\n");
+    printf("|               +--------------------------------+               |\n");
+    printf("|               |         MENU  PRINCIPAL        |               |\n");
+    printf("|               +--------------------------------+               |\n");
+    printf("|               |                                |               |\n");
+    printf("|               |    [ 01 ]  NOUVELLE PARTIE     |               |\n");
+    printf("|               |                                |               |\n");
+    printf("|               |    [ 02 ]  CHARGER LE JEU      |               |\n");
+    printf("|               |                                |               |\n");
+    printf("|               |    [ 03 ]  COMMENT JOUER       |               |\n");
+    printf("|               |                                |               |\n");
+    printf("|               |    [ 04 ]  SORTIE              |               |\n");
+    printf("|               |                                |               |\n");
+    printf("|               +--------------------------------+               |\n");
+    printf("|                                                                |\n");
+    printf("+================================================================+\n");
+    printf("|                                                                |\n");
+    printf("|          LOGIQUE  -  STRATEGIE  -  CONCENTRATION               |\n");
+    printf("|                    EILCO  |  2026-2027                         |\n");
+    printf("+================================================================+\n");
+
+    return saisir_entier("Entrez votre choix (1-4) : ", 1, 4);
+}
+
+int afficherSousMenu(void)
+{
+    effacerEcran();
+    printf("\n               +--------------------------------+\n");
+    printf("               |         NIVEAU DE JEU          |\n");
+    printf("               +--------------------------------+\n");
+    printf("               |                                |\n");
+    printf("               |    [ 01 ]  FACILE              |\n");
+    printf("               |                                |\n");
+    printf("               |    [ 02 ]  MOYEN               |\n");
+    printf("               |                                |\n");
+    printf("               |    [ 03 ]  RETOUR              |\n");
+    printf("               |                                |\n");
+    printf("               +--------------------------------+\n\n");
+
+    return saisir_entier("Entrez votre choix (1-3) : ", 1, 3);
+}
+
+void afficherRegles(void)
+{
+    effacerEcran();
+    printf("===== COMMENT JOUER AU SUDOKU =====\n\n");
+    printf("1. Chaque ligne doit contenir les chiffres de 1 a 9.\n");
+    printf("2. Chaque colonne doit contenir les chiffres de 1 a 9.\n");
+    printf("3. Chaque bloc de 3x3 doit contenir les chiffres de 1 a 9.\n");
+    printf("4. Pour jouer : indiquez la ligne, la colonne puis le chiffre.\n");
+    printf("   Un chiffre deja present dans la ligne, la colonne ou le bloc\n");
+    printf("   est refuse. Le chiffre 0 efface une case que vous avez remplie.\n");
+    attendreEntree();
+}
+
+/* ========================================================================== */
+/*  8. NAVIGATION ET PROGRAMME PRINCIPAL                                       */
+/* ========================================================================== */
+
+void gererNavigation(void)
+{
+    /* Grille FACILE (celle de Grille2.0) */
+    int facile[TAILLE][TAILLE] =
+    {
         {3, 2, 0, 1, 7, 0, 6, 5, 4},
         {6, 1, 5, 2, 9, 4, 7, 0, 0},
         {0, 7, 8, 3, 0, 6, 2, 9, 1},
@@ -176,86 +329,59 @@ void nouvellePartie(void)
         {5, 6, 0, 9, 2, 3, 4, 0, 8}
     };
 
-    int joueur[9][9];
-    int continuer;
+    /* Grille MOYEN : meme solution, davantage de cases vides */
+    int moyen[TAILLE][TAILLE] =
+    {
+        {0, 0, 0, 1, 7, 0, 6, 5, 4},
+        {6, 0, 5, 2, 0, 4, 0, 0, 0},
+        {0, 7, 0, 0, 0, 0, 0, 9, 0},
+        {9, 0, 0, 4, 0, 0, 0, 0, 6},
+        {1, 8, 0, 0, 6, 5, 0, 0, 0},
+        {0, 3, 0, 0, 0, 9, 0, 4, 7},
+        {0, 4, 2, 0, 8, 1, 3, 0, 0},
+        {0, 9, 0, 6, 4, 7, 0, 2, 0},
+        {5, 0, 0, 9, 2, 0, 0, 0, 0}
+    };
 
-    initialiserGrilleJoueur(grille, joueur);
+    int choix;
+    int niveau;
 
-    do {
-        afficherGrille(joueur);
+    do
+    {
+        choix = afficherMenu();
 
-        remplirGrilleJoueur(joueur, grille);
+        switch (choix)
+        {
+            case 1:
+                niveau = afficherSousMenu();
+                if (niveau == 1)
+                    jouerPartie(facile);
+                else if (niveau == 2)
+                    jouerPartie(moyen);
+                break;
 
-        continuer = saisirEntier(
-            "\nContinuer ? (1 = oui, 0 = non) : "
-        );
+            case 2:
+                effacerEcran();
+                printf("Chargement de partie... (bientot disponible)\n");
+                attendreEntree();
+                break;
 
-        continuer = verifierchoix(continuer, 1, 0);
+            case 3:
+                afficherRegles();
+                break;
 
-    } while (continuer == 1);
-
-    printf("\nFin de la partie !\n");
+            case 4:
+                effacerEcran();
+                printf("Merci d'avoir joue au Sudoku !\n");
+                printf("A bientot !\n");
+                break;
+        }
+    } while (choix != 4);
 }
-
-
-/* =====================================================
-   6. REGLES DU SUDOKU
-   ===================================================== */
-
-void afficherRegles(void)
-{
-    printf("\n===== COMMENT JOUER AU SUDOKU =====\n");
-
-    printf("1. Chaque ligne doit contenir les chiffres de 1 a 9.\n");
-    printf("2. Chaque colonne doit contenir les chiffres de 1 a 9.\n");
-    printf("3. Chaque bloc de 3x3 doit contenir les chiffres de 1 a 9.\n");
-}
-
-
-/* =====================================================
-   7. NAVIGATION PRINCIPALE
-   ===================================================== */
-
-int gererNavigation(void)
-{
-    int choix = afficherMenu();
-
-    switch (choix) {
-
-        case 1:
-            nouvellePartie();
-            break;
-
-        case 2:
-            printf("\nChargement de partie...\n");
-            printf("Fonctionnalite en cours de developpement.\n");
-            break;
-
-        case 3:
-            afficherRegles();
-            break;
-
-        case 4:
-            printf("\nMerci d'avoir joue au Sudoku !\n");
-            printf("A bientot !\n");
-            return 0;
-    }
-
-    return 1;
-}
-
-
-/* =====================================================
-   8. PROGRAMME PRINCIPAL
-   ===================================================== */
 
 int main(void)
 {
-    int continuer = 1;
-
-    while (continuer == 1) {
-        continuer = gererNavigation();
-    }
-
+    gererNavigation();
     return 0;
 }
+
