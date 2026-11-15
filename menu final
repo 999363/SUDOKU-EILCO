@@ -5,13 +5,17 @@ Projet sudoku en langage C
 #include "menu.h"
 int choix,menu,min;
 
-int verifierchoix(choix,max,min){ //verifie si le numero entrer par le jouer est dans l'intervalle autorisé
-if (choix<min|| choix>max){
-printf("oups choix non disponible\n");
-} 
-   if(choix>=min&&choix<=max){
-   return 1;
-   }  
+int verifierchoix(int choix, int max, int min) {
+
+    while (choix < min || choix > max) {
+
+        printf("Oups, choix non disponible ! Recommencez : ");
+        scanf("%d", &choix);
+
+    }
+
+    return choix;
+}
    
    int afficherMenu(void){ // j'affiche le menu on raisonne en ligne
       printf("+================================================================+\n");
